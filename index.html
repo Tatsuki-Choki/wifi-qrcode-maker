@@ -313,7 +313,10 @@
             <div class="form-section">
                 <div class="form-group">
                     <label for="ssid">SSID（ネットワーク名）</label>
-                    <input type="text" id="ssid" placeholder="Wi-Fiネットワーク名を入力">
+                    <input type="text" id="ssid" placeholder="Wi-Fiネットワーク名を入力" list="ssidList">
+                    <datalist id="ssidList">
+                        <!-- よく使われるSSIDのサジェスト -->
+                    </datalist>
                     <div class="error-message" id="ssidError"></div>
                 </div>
 
@@ -630,6 +633,13 @@
         document.getElementById('ssid').addEventListener('input', function() {
             saveCurrentSSID(this.value);
         });
+        
+        // SSIDが確定したときに履歴に保存
+        document.getElementById('ssid').addEventListener('change', function() {
+            if (this.value.trim()) {
+                saveSSIDToHistory(this.value.trim());
+            }
+        });
 
         document.querySelectorAll('input[name="security"]').forEach(function(radio) {
             radio.addEventListener('change', function() {
@@ -647,6 +657,9 @@
         async function initializeApp() {
             console.log('アプリ初期化開始...');
             
+            // 履歴からSSIDリストを作成
+            loadSSIDHistory();
+            
             // 現在のWiFi SSIDを取得して設定
             const currentSSID = await getCurrentWiFiSSID();
             if (currentSSID) {
@@ -659,6 +672,43 @@
                 '<div class="qr-placeholder">「生成する」ボタンを押してQRコードを作成</div>';
             
             console.log('アプリ初期化完了');
+        }
+        
+        function loadSSIDHistory() {
+            try {
+                // 履歴から最近使用したSSIDを取得
+                const ssidHistory = JSON.parse(localStorage.getItem('ssidHistory') || '[]');
+                const datalist = document.getElementById('ssidList');
+                
+                // 重複を削除してソート
+                const uniqueSSIDs = [...new Set(ssidHistory)].slice(0, 10);
+                
+                // datalistに追加
+                uniqueSSIDs.forEach(ssid => {
+                    const option = document.createElement('option');
+                    option.value = ssid;
+                    datalist.appendChild(option);
+                });
+            } catch (error) {
+                console.log('SSID履歴読み込みエラー:', error);
+            }
+        }
+        
+        function saveSSIDToHistory(ssid) {
+            try {
+                if (!ssid || !ssid.trim()) return;
+                
+                // 既存の履歴を取得
+                let ssidHistory = JSON.parse(localStorage.getItem('ssidHistory') || '[]');
+                
+                // 重複を削除して新しいSSIDを先頭に追加
+                ssidHistory = [ssid, ...ssidHistory.filter(s => s !== ssid)].slice(0, 20);
+                
+                // 保存
+                localStorage.setItem('ssidHistory', JSON.stringify(ssidHistory));
+            } catch (error) {
+                console.log('SSID履歴保存エラー:', error);
+            }
         }
 
         // ページ読み込み完了を待つ
